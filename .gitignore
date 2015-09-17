@@ -1,3 +1,4 @@
+config.py
 bin/*
 include/*
 lib/*
