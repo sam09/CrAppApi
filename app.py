@@ -4,35 +4,61 @@ from config import db
 from config import gcmKey
 from gcm import GCM
 import json
+import imaplib
 app = Flask(__name__)
+IMAP_SERVER='webmail.nitt.edu'
+@app.route('/login', methods=['POST'])
+def login():
+
+      if request.method == "POST":
+               data=request.json
+               username = data['username']
+               password = data['password']
+               try:
+
+                   imap = imaplib.IMAP4(IMAP_SERVER)
+                   login = imap.login(username, password)
+                   success = login[0]
+                   if(success=='OK'):
+                       print 'ok\n\n'
+                       return jsonify({'logged_in':1})
+               except:
+                   print 'not ok\n\n\n'
+                   return jsonify({'logged_in':0})
+            
 
 @app.route('/updateTT', methods=['POST'])
 def update_timetable():
 	if request.method == "POST":
 		data = request.json
 		dt = jsonify(data)
+                print dt,"\n\n"
 		b =  data['batch']
 		if data['batch'] == int(b):
 			print int(b)
 		
 		gcm = GCM(gcmKey)
 		users = db.users.find({"batch" : b})
-		#print users
+		print users
 		reg_ids = []
 		for i in users:
 			reg_ids.append(i['registration_id'])
-			#print i, "lol"
+			print i, "lol"
 
 		print len(reg_ids)
-		response = gcm.json_request(registration_ids=reg_ids, data=data['data'])
+                
+		response = gcm.json_request(registration_ids=reg_ids, data=data['data'],collapse_key=data['type'])
+                print '-------------'
+                print response
 		return "YOLO"+"\n"
 
 
 @app.route('/register', methods=['POST'])
 def add_user():
 	if request.method == "POST":
-		rollno = request.form['rollnumber']
-		reg_id = request.form['regno']
+                data=request.json
+		rollno = data['rollnumber']
+		reg_id = data['regno']
 		print request.form
 		batch_det = rollno[:-3]
 		db.users.insert({
@@ -67,6 +93,8 @@ def backup():
 		
 		return jsonify( ( { "BackedUp": 1 } ) )
 
+
+
 # To get attendance of a particular user
 @app.route('/attendance', methods = ['POST'])
 def get_attendance():
@@ -87,6 +115,23 @@ def get_attendance():
 			return a
 		except:
 			return jsonify ( ( { "Error": 1 } ) )
+
+
+
+@app.route('/chat',methods=['POST'])
+def chat():
+    if request.method == 'POST':
+        data=request.json
+        b= data['batch']
+        gcm = GCM(gcmKey)
+        users = db.users.find({"batch" : b})
+        print users
+        reg_ids = []
+        for i in users:
+            reg_ids.append(i['registration_id'])
+        print len(reg_ids)
+        response = gcm.json_request(registration_ids=reg_ids, data=data['data'],collapse_key=data['type'])
+        print response
 
 if __name__ =="__main__":
   app.run(debug=True)
