@@ -93,6 +93,8 @@ def backup():
 		
 		return jsonify( ( { "BackedUp": 1 } ) )
 
+
+
 # To get attendance of a particular user
 @app.route('/attendance', methods = ['POST'])
 def get_attendance():
@@ -113,6 +115,23 @@ def get_attendance():
 			return a
 		except:
 			return jsonify ( ( { "Error": 1 } ) )
+
+
+
+@app.route('/chat',methods=['POST'])
+def chat():
+    if request.method == 'POST':
+        data=request.json
+        b= data['batch']
+        gcm = GCM(gcmKey)
+        users = db.users.find({"batch" : b})
+        print users
+        reg_ids = []
+        for i in users:
+            reg_ids.append(i['registration_id'])
+        print len(reg_ids)
+        response = gcm.json_request(registration_ids=reg_ids, data=data['data'],collapse_key=data['type'])
+        print response
 
 if __name__ =="__main__":
   app.run(debug=True)
