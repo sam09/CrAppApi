@@ -2,8 +2,9 @@ from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from config import db
 from config import gcmKey
+from config import parseAppId,parseRestAPIKey
 from gcm import GCM
-import json
+import json,httplib
 import imaplib
 app = Flask(__name__)
 IMAP_SERVER='webmail.nitt.edu'
@@ -25,32 +26,27 @@ def login():
                except:
                    print 'not ok\n\n\n'
                    return jsonify({'logged_in':0})
-            
+
 
 @app.route('/updateTT', methods=['POST'])
 def update_timetable():
 	if request.method == "POST":
 		data = request.json
-		dt = jsonify(data)
-                print dt,"\n\n"
-		b =  data['batch']
-		if data['batch'] == int(b):
-			print int(b)
-		
-		gcm = GCM(gcmKey)
-		users = db.users.find({"batch" : b})
-		print users
-		reg_ids = []
-		for i in users:
-			reg_ids.append(i['registration_id'])
-			print i, "lol"
-
-		print len(reg_ids)
-                
-		response = gcm.json_request(registration_ids=reg_ids, data=data['data'],collapse_key=data['type'])
-                print '-------------'
-                print response
-		return "YOLO"+"\n"
+        connection = httplib.HTTPSConnection('api.parse.com', 443)
+        connection.connect()
+        connection.request('POST', '/1/push', json.dumps({
+               "channels": [
+                 'nlr'+data['batch']
+               ],
+               "data": data
+             }), {
+               "X-Parse-Application-Id": parseAppId,
+               "X-Parse-REST-API-Key": parseRestAPIKey,
+               "Content-Type": "application/json"
+             })
+        result = json.loads(connection.getresponse().read())
+        print result
+        return "YOLO"+"\n"
 
 
 @app.route('/register', methods=['POST'])
@@ -73,10 +69,11 @@ def add_user():
 def backup():
 	if request.method == "POST":
 		data_array = request.json
-		for data in data_array:
-			attendance = db.attendance.find_one( { 
+        print data_array
+        for data in data_array:
+			attendance = db.attendance.find_one( {
 						 "rollno" : data['rollno'],
-						 "date-time" : dat['date-time'],
+						 "date-time" : data['date-time'],
 						 "subject" : data['subject']
 					 	})
 			if attendance is None:
@@ -90,8 +87,7 @@ def backup():
 					db.attendance.insert(data)
 				except:
 					return jsonify( ( { "BackedUp": 0 } ) )
-		
-		return jsonify( ( { "BackedUp": 1 } ) )
+        return jsonify( ( { "BackedUp": 1 } ) )
 
 
 
@@ -135,4 +131,3 @@ def chat():
 
 if __name__ =="__main__":
   app.run(debug=True)
-
