@@ -8,6 +8,20 @@ import json,httplib
 import imaplib
 app = Flask(__name__)
 IMAP_SERVER='webmail.nitt.edu'
+def verifyKey(username,key):
+    userInfo = db.users.find_one({
+        "rollnumber" : username,
+        "registration_id" : key
+    })
+    if userInfo == None:
+        return False
+    else:
+        return True
+
+@app.route('/' ,methods=['GET'])
+def index():
+    return "hello"
+
 @app.route('/login', methods=['POST'])
 def login():
 
@@ -27,7 +41,60 @@ def login():
                    print 'not ok\n\n\n'
                    return jsonify({'logged_in':0})
 
+@app.route('/register', methods=['POST'])
+def add_user():
+	if request.method == "POST":
+                data=request.json
+		rollno = data['rollnumber']
+		reg_id = data['regno']
+		print request.form
+		batch_det = rollno[:-3]
+		db.users.insert({
+				"rollnumber": rollno,
+				"registration_id": reg_id,
+				"batch": batch_det
+				})
+		return jsonify( ( { "Signed Up" : 1 } ) )
 
+@app.route('/setTimeTable', methods=['POST'])
+def setTimeTable():
+    if request.method == "POST" :
+        data = request.json
+        batch = data["rno"][:-3]
+        b={
+        "batch": batch
+        }
+        check = db.fullTT.find_one(b)
+        a ={
+        "tt" : data["data"],
+        "batch" : batch
+        }
+        if check is None :
+            try:
+                db.fullTT.insert(a)
+            except:
+                return jsonify(({"Error" : 1}))
+        else:
+            try:
+                db.fullTT.remove(b)
+                db.fullTT.insert(a)
+            except:
+                return jsonify(({"Error" : 1}))
+
+        return jsonify(({"Success": 1}))
+
+#getTimetable with batch
+@app.route('/getTimetable/<batch>' , methods=['POST','GET'])
+def getTimetable(batch):
+    data = db.fullTT.find({
+    "batch" : batch
+    })
+    if data is None :
+        return jsonify(({"Success" : 0}))
+    for i in data :
+        return json.dumps(i['tt'])
+
+#parse sending code
 @app.route('/updateTT', methods=['POST'])
 def update_timetable():
 	if request.method == "POST":
@@ -47,22 +114,6 @@ def update_timetable():
         result = json.loads(connection.getresponse().read())
         print result
         return "YOLO"+"\n"
-
-
-@app.route('/register', methods=['POST'])
-def add_user():
-	if request.method == "POST":
-                data=request.json
-		rollno = data['rollnumber']
-		reg_id = data['regno']
-		print request.form
-		batch_det = rollno[:-3]
-		db.users.insert({
-				"rollnumber": rollno,
-				"registration_id": reg_id,
-				"batch": batch_det
-				})
-		return jsonify( ( { "Signed Up" : 1 } ) )
 
 # Route is for backing up attendance
 @app.route('/backup', methods= ['POST'] )
@@ -112,22 +163,6 @@ def get_attendance():
 		except:
 			return jsonify ( ( { "Error": 1 } ) )
 
-
-
-@app.route('/chat',methods=['POST'])
-def chat():
-    if request.method == 'POST':
-        data=request.json
-        b= data['batch']
-        gcm = GCM(gcmKey)
-        users = db.users.find({"batch" : b})
-        print users
-        reg_ids = []
-        for i in users:
-            reg_ids.append(i['registration_id'])
-        print len(reg_ids)
-        response = gcm.json_request(registration_ids=reg_ids, data=data['data'],collapse_key=data['type'])
-        print response
 
 if __name__ =="__main__":
   app.run(debug=True)
