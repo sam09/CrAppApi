@@ -22,6 +22,33 @@ def verifyKey(username,key):
 def index():
     return "hello"
 
+@app.route('/addCR',methods=['POST'])
+def addCR():
+    data=request.json
+    username=data['username']
+    password=data['password']
+    a={
+    "username": username ,
+    "password": password
+    }
+    db.crlogin.insert(a)
+    return "Success"
+
+@app.route('/crlogin', methods=['POST'])
+def crlogin():
+    data=request.json
+    username=data['username']
+    password=data['password']
+    check=db.crlogin.find_one({
+    "username": username ,
+    "password": password
+    })
+    print check
+    if check is None :
+        return jsonify(({"Signed Up" : 0}))
+    else:
+        return jsonify(({"Signed Up" : 1}))
+
 @app.route('/login', methods=['POST'])
 def login():
 
@@ -60,7 +87,7 @@ def add_user():
 def setTimeTable():
     if request.method == "POST" :
         data = request.json
-        batch = data["rno"][:-3]
+        batch = data["batch"]
         b={
         "batch": batch
         }
@@ -80,6 +107,20 @@ def setTimeTable():
                 db.fullTT.insert(a)
             except:
                 return jsonify(({"Error" : 1}))
+        connection = httplib.HTTPSConnection('api.parse.com', 443)
+        connection.connect()
+        connection.request('POST', '/1/push', json.dumps({
+               "channels": [
+                 'nlr'+data['batch']
+               ],
+               "data": {"type": "tt"}
+             }), {
+               "X-Parse-Application-Id": parseAppId,
+               "X-Parse-REST-API-Key": parseRestAPIKey,
+               "Content-Type": "application/json"
+             })
+        result = json.loads(connection.getresponse().read())
+        print result
 
         return jsonify(({"Success": 1}))
 
