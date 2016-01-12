@@ -2,16 +2,24 @@ from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from config import db
 from config import gcmKey
+import time
 from config import parseAppId,parseRestAPIKey
 from gcm import GCM
 import json,httplib
 import imaplib
+import hashlib
 app = Flask(__name__)
 IMAP_SERVER='webmail.nitt.edu'
+
+def hashify(string):
+    hash_object = hashlib.sha1(string+"CruzadoMillyhak_DeltaIsGReaT"+str(time.time()))
+    hex_dig = hash_object.hexdigest()
+    return hex_dig
+
 def verifyKey(username,key):
-    userInfo = db.users.find_one({
+    usersinfo = db.users.find_one({
         "rollnumber" : username,
-        "registration_id" : key
+        "secret" : key
     })
     if userInfo == None:
         return False
@@ -43,11 +51,20 @@ def crlogin():
     "username": username ,
     "password": password
     })
-    print check
     if check is None :
         return jsonify(({"Signed Up" : 0}))
     else:
-        return jsonify(({"Signed Up" : 1}))
+        secret = hashify(username)
+        ab={
+        "rollnumber" : username,
+        "secret" : secret
+        }
+        try:
+            db.usersInfo.remove({"rollnumber" :username})
+            db.usersInfo.insert(ab)
+        except:
+            print "****cant add*****"
+        return jsonify(({"Signed Up" : 1 , "secret" : secret}))
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -57,7 +74,6 @@ def login():
                username = data['username']
                password = data['password']
                try:
-
                    imap = imaplib.IMAP4(IMAP_SERVER)
                    login = imap.login(username, password)
                    success = login[0]
@@ -87,6 +103,16 @@ def add_user():
 def setTimeTable():
     if request.method == "POST" :
         data = request.json
+        rno = data['username']
+        secret = data['secret']
+        chk = db.usersInfo.find({
+        "rollnumber" : rno
+        })
+        for i in chk:
+            if(i["secret"]!=secret):
+                return jsonify(({"Success" : 0 , "message" : "Nice Try :P"}))
+            break
+
         batch = data["batch"]
         b={
         "batch": batch
@@ -140,6 +166,16 @@ def getTimetable(batch):
 def update_timetable():
 	if request.method == "POST":
 		data = request.json
+        rno = data['username']
+        secret = data['secret']
+        chk = db.usersInfo.find({
+        "rollnumber" : rno
+        })
+        for i in chk:
+            if(i["secret"]!=secret):
+                return jsonify(({"Success" : 0 , "message" : "Nice Try :P"}))
+            break
+
         connection = httplib.HTTPSConnection('api.parse.com', 443)
         connection.connect()
         connection.request('POST', '/1/push', json.dumps({
@@ -161,6 +197,15 @@ def update_timetable():
 def backup():
 	if request.method == "POST":
 		data_array = request.json
+        rno = data['username']
+        secret = data['secret']
+        chk = db.usersInfo.find({
+        "rollnumber" : rno
+        })
+        for i in chk:
+            if(i["secret"]!=secret):
+                return jsonify(({"Success" : 0 , "message" : "Nice Try :P"}))
+            break
         print data_array
         for data in data_array:
 			attendance = db.attendance.find_one( {
