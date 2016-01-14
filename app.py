@@ -197,15 +197,15 @@ def update_timetable():
 def backup():
 	if request.method == "POST":
 		data_array = request.json
-        rno = data['username']
-        secret = data['secret']
-        chk = db.usersInfo.find({
-        "rollnumber" : rno
-        })
-        for i in chk:
-            if(i["secret"]!=secret):
-                return jsonify(({"Success" : 0 , "message" : "Nice Try :P"}))
-            break
+        # rno = data['username']
+        # secret = data['secret']
+        # chk = db.usersInfo.find({
+        # "rollnumber" : rno
+        # })
+        # for i in chk:
+        #     if(i["secret"]!=secret):
+        #         return jsonify(({"Success" : 0 , "message" : "Nice Try :P"}))
+        #     break
         print data_array
         for data in data_array:
 			attendance = db.attendance.find_one( {
