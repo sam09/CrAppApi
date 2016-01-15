@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from config import db
 from config import gcmKey
+from config import secretKey
 import time
 from config import parseAppId,parseRestAPIKey
 from gcm import GCM
@@ -12,7 +13,7 @@ app = Flask(__name__)
 IMAP_SERVER='webmail.nitt.edu'
 
 def hashify(string):
-    hash_object = hashlib.sha1(string+"CruzadoMillyhak_DeltaIsGReaT"+str(time.time()))
+    hash_object = hashlib.sha1(string+secretKey+str(time.time()))
     hex_dig = hash_object.hexdigest()
     return hex_dig
 
